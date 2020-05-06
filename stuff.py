@@ -23,6 +23,8 @@ from statsmodels.graphics.tsaplots import plot_acf,plot_pacf
 std=StandardScaler()
 #pd.set_option('display.float_format', lambda x: '%.6f' % x)
 
+""" See kaggle/neel """
+
 covid=pd.read_csv("ncov19data/covid_19_data.csv")
 
 
@@ -138,4 +140,95 @@ print("\n\nAverage Mortality Rate",datewise["Mortality Rate"].mean())
 print("Median Mortality Rate",datewise["Mortality Rate"].median())
 print("Average Recovery Rate",datewise["Recovery Rate"].mean())
 print("Median Recovery Rate",datewise["Recovery Rate"].median())
+plt.show()
+
+
+
+
+
+
+
+print("Average increase in number of Confirmed Cases every day: ",np.round(datewise["Confirmed"].diff().fillna(0).mean()))
+print("Average increase in number of Recovered Cases every day: ",np.round(datewise["Recovered"].diff().fillna(0).mean()))
+print("Average increase in number of Deaths Cases every day: ",np.round(datewise["Deaths"].diff().fillna(0).mean()))
+
+plt.figure(figsize=(15,6))
+plt.plot(datewise["Confirmed"].diff().fillna(0),label="Daily increase in Confiremd Cases",linewidth=3)
+plt.plot(datewise["Recovered"].diff().fillna(0),label="Daily increase in Recovered Cases",linewidth=3)
+plt.plot(datewise["Deaths"].diff().fillna(0),label="Daily increase in Death Cases",linewidth=3)
+plt.xlabel("Timestamp")
+plt.ylabel("Daily Increment")
+plt.title("Daily increase in different Types of Cases Worldwide")
+plt.xticks(rotation=90)
+plt.show()
+
+
+
+
+
+
+
+daily_increase_confirm=[]
+daily_increase_recovered=[]
+daily_increase_deaths=[]
+for i in range(datewise.shape[0]-1):
+    daily_increase_confirm.append(((datewise["Confirmed"].iloc[i+1]/datewise["Confirmed"].iloc[i])))
+    daily_increase_recovered.append(((datewise["Recovered"].iloc[i+1]/datewise["Recovered"].iloc[i])))
+    daily_increase_deaths.append(((datewise["Deaths"].iloc[i+1]/datewise["Deaths"].iloc[i])))
+daily_increase_confirm.insert(0,1)
+daily_increase_recovered.insert(0,1)
+daily_increase_deaths.insert(0,1)
+
+plt.figure(figsize=(15,7))
+plt.plot(datewise.index,daily_increase_confirm,label="Growth Factor Confiremd Cases",linewidth=3)
+plt.plot(datewise.index,daily_increase_recovered,label="Growth Factor Recovered Cases",linewidth=3)
+plt.plot(datewise.index,daily_increase_deaths,label="Growth Factor Death Cases",linewidth=3)
+plt.xlabel("Timestamp")
+plt.ylabel("Growth Factor")
+plt.title("Growth Factor of different Types of Cases Worldwide")
+plt.axhline(1,linestyle='--',color='black',label="Baseline")
+plt.xticks(rotation=90)
+plt.show()
+
+
+
+
+
+
+
+
+#Calculating countrywise Moratality and Recovery Rate
+countrywise=covid[covid["ObservationDate"]==covid["ObservationDate"].max()].groupby(["Country/Region"]).agg({"Confirmed":'sum',"Recovered":'sum',"Deaths":'sum'}).sort_values(["Confirmed"],ascending=False)
+countrywise["Mortality"]=(countrywise["Deaths"]/countrywise["Confirmed"])*100
+countrywise["Recovery"]=(countrywise["Recovered"]/countrywise["Confirmed"])*100
+
+fig, (ax1, ax2) = plt.subplots(2, 1,figsize=(10,15))
+countrywise_plot_mortal=countrywise[countrywise["Confirmed"]>500].sort_values(["Mortality"],ascending=False).head(15)
+sns.barplot(x=countrywise_plot_mortal["Mortality"],y=countrywise_plot_mortal.index,ax=ax1)
+ax1.set_title("Top 15 Countries according High Mortatlity Rate")
+ax1.set_xlabel("Mortality (in Percentage)")
+countrywise_plot_recover=countrywise[countrywise["Confirmed"]>500].sort_values(["Recovery"],ascending=False).head(15)
+sns.barplot(x=countrywise_plot_recover["Recovery"],y=countrywise_plot_recover.index, ax=ax2)
+ax2.set_title("Top 15 Countries according High Recovery Rate")
+ax2.set_xlabel("Recovery (in Percentage)")
+plt.show()
+
+
+
+
+
+
+
+grouped_country=covid.groupby(["Country/Region","ObservationDate"]).agg({"Confirmed":'sum',"Recovered":'sum',"Deaths":'sum'})
+
+grouped_country["Active Cases"]=grouped_country["Confirmed"]-grouped_country["Recovered"]-grouped_country["Deaths"]
+grouped_country["log_confirmed"]=np.log(grouped_country["Confirmed"])
+grouped_country["log_active"]=np.log(grouped_country["Active Cases"])
+
+plt.figure(figsize=(15,10))
+for country in countrywise.head(10).index:
+    sns.lineplot(x=grouped_country.ix[country]["log_confirmed"],y=grouped_country.ix[country]["log_active"],label=country)
+plt.xlabel("Confirmed Cases (Logrithmic Scale)")
+plt.ylabel("Active Cases (Logarithmic Scale)")
+plt.title("COVID-19 Journey of Top 10 countries having Highest number of Confirmed Cases")
 plt.show()
